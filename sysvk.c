@@ -2,13 +2,13 @@
 #include <hardware/hardware.h>
 #include <hardware/hwvulkan.h>
 
-int (*hw_get_module_handle)(const char *id, const struct hw_module_t *>
+int (*hw_get_module_handle)(const char *id, const struct hw_module_t **module);
 
 void _init_hw() {
   if (hw_get_module_handle != NULL) return;
   void *libhardware_handle = dlopen("libhardware.so", RTLD_LAZY);
   if (libhardware_handle == NULL) return;
-  hw_get_module_handle = (int (*)(const char *, const struct hw_module>
+  hw_get_module_handle = (int (*)(const char *, const struct hw_module_t **))dlsym(libhardware_handl>
 }
 
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
@@ -17,19 +17,19 @@ vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName) {
   if (hw_get_module_handle == NULL) return NULL;
   hw_module_t *module;
   int ret =
-      hw_get_module_handle(HWVULKAN_HARDWARE_MODULE_ID, (const hw_modu>
+      hw_get_module_handle(HWVULKAN_HARDWARE_MODULE_ID, (const hw_module_t **)&module);
   if (ret) {
     return NULL;
   }
   hwvulkan_device_t *sysvk = NULL;
-  module->methods->open(module, HWVULKAN_DEVICE_0, (hw_device_t **)&sy>
+  module->methods->open(module, HWVULKAN_DEVICE_0, (hw_device_t **)&sysvk);
   if (!sysvk) {
     return NULL;
   }
   return sysvk->GetInstanceProcAddr(instance, pName);
 }
 
-PFN_vkVoidFunction vk_icdGetPhysicalDeviceProcAddr(VkInstance _instanc>
+PFN_vkVoidFunction vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance,
                                                    const char *pName) {
   return NULL;
 }
@@ -40,3 +40,4 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion) {
   *pSupportedVersion = MIN(*pSupportedVersion, 5u);
   return VK_SUCCESS;
 }
+
